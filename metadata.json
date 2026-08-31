@@ -1,0 +1,6 @@
+{
+  "name": "The Tie Breaker",
+  "description": "Интеллектуальный помощник для принятия решений с анализом плюсов и минусов, матрицей сравнения, SWOT-анализом и вердиктами.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
