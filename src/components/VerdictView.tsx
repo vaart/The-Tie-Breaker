@@ -22,7 +22,17 @@ export const VerdictView: React.FC<VerdictViewProps> = ({ decision, onSelectOpti
   const { verdict, options, selectedOptionId, status } = decision;
   const isFinalized = status === 'decided' || Boolean(selectedOptionId);
 
+  // Local state for active option inspection (defaults to AI recommended option or selected option)
+  const [inspectedOptionId, setInspectedOptionId] = React.useState<string>(
+    selectedOptionId || verdict.recommendedOptionId || options[0]?.id || ''
+  );
+
+  const activeOption = options.find((o) => o.id === inspectedOptionId) || options[0];
+  const isInspectedRecommended = activeOption?.id === verdict.recommendedOptionId;
+  const isInspectedSelected = selectedOptionId === activeOption?.id;
+
   const handleCelebrate = (optId: string) => {
+    setInspectedOptionId(optId);
     onSelectOption(optId);
     confetti({
       particleCount: 70,
@@ -34,21 +44,29 @@ export const VerdictView: React.FC<VerdictViewProps> = ({ decision, onSelectOpti
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      {/* Top Banner: The Final Recommendation */}
+      {/* Top Banner: The Final Recommendation & Interactive Option Switcher */}
       <div className="relative overflow-hidden rounded-lg bg-[#141414] border border-[#D4AF37]/35 text-white p-5 sm:p-7 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-medium tracking-wide bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37]">
-              <Trophy className="w-3.5 h-3.5 text-[#D4AF37]" />
-              Главная рекомендация
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-medium tracking-wide bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37]">
+                <Trophy className="w-3.5 h-3.5 text-[#D4AF37]" />
+                {isInspectedRecommended ? 'Главная рекомендация ИИ' : 'Альтернативный сценарий'}
+              </div>
+              {isInspectedSelected && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  Ваш зафиксированный выбор
+                </div>
+              )}
             </div>
 
             {/* Confidence Score */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#0A0A0A] border border-white/10 text-xs">
-              <span className="text-white/50 text-[11px]">Уверенность выбора:</span>
+              <span className="text-white/50 text-[11px]">Уверенность ИИ:</span>
               <span className="text-[#D4AF37] font-bold font-mono">{verdict.confidenceScore}%</span>
               <div className="w-14 h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div 
@@ -59,17 +77,84 @@ export const VerdictView: React.FC<VerdictViewProps> = ({ decision, onSelectOpti
             </div>
           </div>
 
-          <div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-white font-light tracking-tight mb-1.5">
-              {verdict.recommendedOptionTitle}
-            </h2>
-            <p className="text-base sm:text-lg font-serif italic text-[#D4AF37] font-normal leading-relaxed">
-              «{verdict.verdictHeadline}»
-            </p>
+          {/* Interactive Option Tabs */}
+          <div className="pt-1">
+            <div className="text-[11px] text-white/50 mb-2 font-light">
+              Переключение вариантов для просмотра деталей и фиксации решения:
+            </div>
+            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-[#0A0A0A] border border-white/10 rounded-lg">
+              {options.map((opt, idx) => {
+                const isInspected = opt.id === activeOption?.id;
+                const isRec = opt.id === verdict.recommendedOptionId;
+                const isChosen = selectedOptionId === opt.id;
+
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => setInspectedOptionId(opt.id)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs transition-all ${
+                      isInspected
+                        ? 'bg-[#D4AF37] text-[#0A0A0A] font-bold shadow-[0_0_15px_rgba(212,175,55,0.25)]'
+                        : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded text-[10px] flex items-center justify-center font-mono font-bold ${
+                      isInspected ? 'bg-[#0A0A0A] text-[#D4AF37]' : 'bg-white/10 text-white/70'
+                    }`}>
+                      {idx === 0 ? 'А' : idx === 1 ? 'Б' : idx === 2 ? 'В' : idx + 1}
+                    </span>
+                    <span>{opt.title}</span>
+                    {isRec && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                        isInspected ? 'bg-[#0A0A0A]/20 text-[#0A0A0A]' : 'bg-[#D4AF37]/20 text-[#D4AF37]'
+                      }`}>
+                        Рекомендация
+                      </span>
+                    )}
+                    {isChosen && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500 text-[#0A0A0A] font-mono font-bold">
+                        Выбран
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="p-4 rounded-md bg-[#0A0A0A] border border-white/10 text-white/85 text-xs sm:text-sm leading-relaxed font-light">
-            <p>{verdict.verdictSummary}</p>
+          {/* Active Option Detail Card */}
+          <div className="p-4 sm:p-5 rounded-md bg-[#0A0A0A] border border-white/10 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-serif text-white font-light tracking-tight">
+                {activeOption?.title}
+              </h2>
+              {activeOption?.tagline && (
+                <span className="text-xs px-2.5 py-1 rounded bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 font-medium">
+                  {activeOption.tagline}
+                </span>
+              )}
+            </div>
+
+            {/* Dynamic Description of the currently inspected option */}
+            <div className="text-sm sm:text-base text-white/90 font-light leading-relaxed">
+              {activeOption?.description || 'Подробный сценарий для оценки всех рисков и перспектив.'}
+            </div>
+
+            {/* Verdict summary context if inspected option is recommended */}
+            {isInspectedRecommended ? (
+              <div className="pt-2 border-t border-white/10 space-y-1">
+                <p className="text-xs sm:text-sm font-serif italic text-[#D4AF37]">
+                  «{verdict.verdictHeadline}»
+                </p>
+                <p className="text-xs text-white/70 font-light leading-relaxed">
+                  {verdict.verdictSummary}
+                </p>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-white/10 text-xs text-white/60 font-light leading-relaxed">
+                Вы просматриваете альтернативный сценарий. Вы можете зафиксировать его в качестве итогового решения ниже.
+              </div>
+            )}
           </div>
 
           {/* Action CTA: Accept / Finalize this decision */}
@@ -77,35 +162,29 @@ export const VerdictView: React.FC<VerdictViewProps> = ({ decision, onSelectOpti
             <div className="text-xs text-white/60">
               {isFinalized ? (
                 <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
-                  <CheckCheck className="w-4 h-4 text-emerald-400" /> Выбор сделан и зафиксирован в истории.
+                  <CheckCheck className="w-4 h-4 text-emerald-400" /> Выбор зафиксирован в истории решений.
                 </span>
               ) : (
-                <span className="font-light">Готовы принять решение? Выберите подходящий вариант:</span>
+                <span className="font-light">Готовы принять решение? Зафиксируйте текущий вариант:</span>
               )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {options.map((opt) => {
-                const isSelected = selectedOptionId === opt.id;
-                const isRecommended = opt.id === verdict.recommendedOptionId;
-
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => handleCelebrate(opt.id)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-semibold tracking-wide transition-all ${
-                      isSelected
-                        ? 'bg-emerald-500 text-[#0A0A0A] shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                        : isRecommended
-                        ? 'bg-[#D4AF37] hover:bg-[#E5C158] text-[#0A0A0A] shadow-[0_0_15px_rgba(212,175,55,0.2)]'
-                        : 'bg-white/5 hover:bg-white/10 text-white border border-white/15'
-                    }`}
-                  >
-                    {isSelected ? <CheckCircle className="w-3.5 h-3.5" /> : null}
-                    {isSelected ? 'Мой выбор' : `Выбрать «${opt.title}»`}
-                  </button>
-                );
-              })}
+              <button
+                onClick={() => handleCelebrate(activeOption.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold tracking-wide transition-all ${
+                  selectedOptionId === activeOption.id
+                    ? 'bg-emerald-500 text-[#0A0A0A] shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                    : isInspectedRecommended
+                    ? 'bg-[#D4AF37] hover:bg-[#E5C158] text-[#0A0A0A] shadow-[0_0_15px_rgba(212,175,55,0.25)]'
+                    : 'bg-emerald-500 hover:bg-emerald-400 text-[#0A0A0A] shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                }`}
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                {selectedOptionId === activeOption.id
+                  ? 'Выбранный вариант (зафиксирован)'
+                  : `Выбрать «${activeOption.title}»`}
+              </button>
             </div>
           </div>
         </div>
